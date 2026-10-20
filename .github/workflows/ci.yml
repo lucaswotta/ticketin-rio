@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -28,11 +28,18 @@ jobs:
 
       # verify = spotless:check + testes unitários (surefire) + *IT com Testcontainers (failsafe)
       - name: mvn verify
-        run: ./mvnw -B -ntp verify
+        run: |
+          set -o pipefail
+          ./mvnw -B -ntp verify 2>&1 | tee build.log
+
+      # Erros do Maven viram anotações, visíveis no resumo da execução sem abrir o log inteiro.
+      - name: Resumo dos erros
+        if: failure()
+        run: grep -E '^\[ERROR\]' build.log | head -30 | sed 's/^/::error::/' || true
 
       - name: Relatórios de teste
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-reports
           path: |
@@ -45,7 +52,7 @@ jobs:
     needs: verify
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
       - name: Build
         uses: docker/build-push-action@v6
